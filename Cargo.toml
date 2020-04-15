@@ -16,7 +16,7 @@ categories = ["graphics"]
 [dependencies]
 geo-normalized = "0.1"
 geo-types = "0.4"
-geo-booleanop = { git = "https://github.com/21re/rust-geo-booleanop", branch = "master" }
+geo-booleanop = "0.2.1"
 num-traits = "0.2.11"
 flo_curves = "0.3.1"
 svgtypes = "0.5"
