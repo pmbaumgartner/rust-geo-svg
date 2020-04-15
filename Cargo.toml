@@ -1,13 +1,20 @@
 [package]
-name = "geo-svg"
+name = "geo-svg-io"
+description = "Functionality to convert between SVG and geo-types"
 version = "0.1.0"
 authors = ["Bronson Brown-deVost <bronsonbdevost@aim.com>"]
 edition = "2018"
+license = "MIT"
+readme = "README.md"
+homepage = "https://gitlab.com/bronsonbdevost/rust-geo-svg"
+repository = "https://gitlab.com/bronsonbdevost/rust-geo-svg"
+keywords = ["geo", "SVG", "gis"]
+categories = ["graphics"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-geo-normalized = { git = "https://gitlab.com/bronsonbdevost/rust-geo-normalized", branch = "master" }
+geo-normalized = "0.1"
 geo-types = "0.4"
 geo-booleanop = { git = "https://github.com/21re/rust-geo-booleanop", branch = "master" }
 num-traits = "0.2.11"

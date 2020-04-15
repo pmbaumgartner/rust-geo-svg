@@ -1,19 +1,111 @@
-extern crate geo_normalized;
 extern crate geo_types;
 
 use geo_types::{
     Coordinate, Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPolygon,
     Polygon, Rect, Triangle,
 };
-use geo_normalized::Normalized;
 use std::fmt;
-use num_traits;
 
 pub trait ToSvg {
+    /// Return the Geometry as an SVG element (**Note** this does not return a full SVG)
+    ///
+    /// This function produces an SVG element of the simplest type possible:
+    ///
+    /// * Polygon &rarr; \<path\>
+    /// * LineString &rarr; \<polyline\>
+    /// * Line &rarr; \<line\>
+    /// * Triangle &rarr; \<polygon\> with three points
+    /// * Rect &rarr; \<rect\> with `x`, `y`, `width`, and `height`
+    ///
+    /// Complex Geometry types will return multiple SVG elements separated by `newline`s:
+    ///
+    /// * GeometryCollection &rarr; `newline` separated SVG elements corresponding to the individual Geometries it contains
+    /// * MultiPolygon &rarr; `newline` separated <path> elements
+    /// * MultiLineString &rarr; `newline` separated <polyline> elements
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use geo_types::{ MultiPolygon, polygon };
+    /// use geo_svg_io::geo_svg_writer::ToSvg;
+    ///
+    /// let poly1 = polygon![
+    ///             (x: 1.0, y: 1.0),
+    ///             (x: 4.0, y: 1.0),
+    ///             (x: 4.0, y: 4.0),
+    ///             (x: 1.0, y: 4.0),
+    ///             (x: 1.0, y: 1.0),
+    ///         ];
+    ///
+    /// let poly2 = polygon!(
+    ///         exterior: [
+    ///             (x: 0.0, y: 0.0),
+    ///             (x: 6.0, y: 0.0),
+    ///             (x: 6.0, y: 6.0),
+    ///             (x: 0.0, y: 6.0),
+    ///             (x: 0.0, y: 0.0),],
+    ///         interiors:[[
+    ///             (x: 1.0, y: 1.0),
+    ///             (x: 4.0, y: 1.0),
+    ///             (x: 4.0, y: 4.0),
+    ///             (x: 1.50, y: 4.0),
+    ///             (x: 1.0, y: 1.0),]
+    ///             ]
+    ///         );
+    ///
+    /// let mp = MultiPolygon(vec![poly1, poly2]);
+    /// let wkt_out = mp.to_svg();
+    ///
+    /// let expected = String::from(
+    ///             r#"<path d="M1 1L4 1L4 4L1 4L1 1"/>
+    /// <path d="M0 0L6 0L6 6L0 6L0 0M1 1L4 1L4 4L1.5 4L1 1"/>"#,
+    ///         );
+    ///
+    /// assert_eq!(wkt_out, expected);
+    /// ```
+    ///
     fn to_svg(&self) -> String;
 }
 
 pub trait ToSvgString {
+    /// Returns a valid SVG `d`-string for the points in the Geometry, which can be used in an SVG `<path>` element
+    ///
+    /// # Examples
+    /// ```rust
+    /// use geo_types::{polygon, MultiPolygon};
+    /// use geo_svg_io::geo_svg_writer::ToSvgString;
+    /// let poly1 = polygon![
+    ///             (x: 1.0, y: 1.0),
+    ///             (x: 4.0, y: 1.0),
+    ///             (x: 4.0, y: 4.0),
+    ///             (x: 1.0, y: 4.0),
+    ///             (x: 1.0, y: 1.0),
+    ///         ];
+    ///
+    /// let poly2 = polygon!(
+    ///         exterior: [
+    ///             (x: 0.0, y: 0.0),
+    ///             (x: 6.0, y: 0.0),
+    ///             (x: 6.0, y: 6.0),
+    ///             (x: 0.0, y: 6.0),
+    ///             (x: 0.0, y: 0.0),],
+    ///         interiors:[[
+    ///             (x: 1.0, y: 1.0),
+    ///             (x: 4.0, y: 1.0),
+    ///             (x: 4.0, y: 4.0),
+    ///             (x: 1.50, y: 4.0),
+    ///             (x: 1.0, y: 1.0),]
+    ///             ]
+    ///         );
+    ///
+    /// let mp = MultiPolygon(vec![poly1, poly2]);
+    /// let wkt_out = mp.to_svg_string();
+    /// let expected = String::from(
+    ///     "M1 1L4 1L4 4L1 4L1 1M0 0L6 0L6 6L0 6L0 0M1 1L4 1L4 4L1.5 4L1 1"
+    /// );
+    ///  assert_eq!(wkt_out, expected);
+    /// ```
+    ///
     fn to_svg_string(&self) -> String;
 }
 
@@ -365,7 +457,7 @@ fn coord_to_svg_point<T: num_traits::Float + fmt::Display>(coord: &Coordinate<T>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use geo_types::{line_string, point, polygon};
+    use geo_types::{line_string, polygon};
 
     #[test]
     fn can_format_geom_collection() {
@@ -429,6 +521,37 @@ mod tests {
             r#"<path d="M1 1L4 1L4 4L1 4L1 1"/>
 <path d="M0 0L6 0L6 6L0 6L0 0M1 1L4 1L4 4L1.5 4L1 1"/>"#,
         );
+        assert_eq!(wkt_out, expected);
+    }
+
+    #[test]
+    fn can_format_multi_polygon_to_d_string() {
+        let poly1 = polygon![
+            (x: 1.0, y: 1.0),
+            (x: 4.0, y: 1.0),
+            (x: 4.0, y: 4.0),
+            (x: 1.0, y: 4.0),
+            (x: 1.0, y: 1.0),
+        ];
+        let poly2 = polygon!(
+        exterior: [
+            (x: 0.0, y: 0.0),
+            (x: 6.0, y: 0.0),
+            (x: 6.0, y: 6.0),
+            (x: 0.0, y: 6.0),
+            (x: 0.0, y: 0.0),],
+        interiors:[[
+            (x: 1.0, y: 1.0),
+            (x: 4.0, y: 1.0),
+            (x: 4.0, y: 4.0),
+            (x: 1.50, y: 4.0),
+            (x: 1.0, y: 1.0),]
+            ]
+        );
+        let mp = MultiPolygon(vec![poly1, poly2]);
+        let wkt_out = mp.to_svg_string();
+        let expected =
+            String::from("M1 1L4 1L4 4L1 4L1 1M0 0L6 0L6 6L0 6L0 0M1 1L4 1L4 4L1.5 4L1 1");
         assert_eq!(wkt_out, expected);
     }
 
