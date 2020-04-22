@@ -10,6 +10,69 @@ This package provides a functions to read a string containing an SVG element or 
 
   **Note** this function does not parse a full SVG string (e.g., `<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L10 0L10 10L0 10Z"/></svg>`), it only parses the individual shape elements (e.g., `<path d="M0 0L10 0L10 10L0 10Z"/>`).  The following SVG elements are supported and produce the specified Geometry types:
 
+* \<path\> &rarr; Geometry with the autodetected Geometry type
+* \<polygon\> &rarr; Polygon
+* \<polyline\> &rarr; LineString
+* \<rect\> &rarr; Polygon
+* \<line\> &rarr; Line
+
+#### Examples
+
+```rust
+use geo_types::{ Polygon, polygon };
+use geo_svg_io::geo_svg_reader::svg_to_geometry;
+
+let poly: Polygon<f64> = polygon!(
+    exterior: [
+        (x: 0.0_f64, y: 0.0),
+        (x: 0.0, y: 60.0),
+        (x: 60.0, y: 60.0),
+        (x: 60.0, y: 0.0),
+        (x: 0.0, y: 0.0),],
+    interiors:[[
+        (x: 10.0, y: 10.0),
+        (x: 40.0, y: 1.0),
+        (x: 40.0, y: 40.0),
+        (x: 10.50, y: 40.0),
+        (x: 10.0, y: 10.0),]
+        ]
+    );
+let svg_string =
+    String::from(r#"<path d="M0 0L0 60L60 60L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10"/>"#);
+
+let parsed_svg = svg_to_geometry(&svg_string);
+assert!(parsed_svg.is_ok());
+let parsed_poly = parsed_svg.ok().unwrap().into_polygon();
+assert!(parsed_poly.is_some());
+assert_eq!(poly, parsed_poly.unwrap());
+```
+
+```rust
+use geo_types::{ Polygon, polygon };
+use geo_svg_io::geo_svg_reader::svg_to_geometry;
+
+let poly: Polygon<f64> = polygon!(
+    exterior: [
+        (x: 0.0_f64, y: 0.0),
+        (x: 0.0, y: 60.0),
+        (x: 60.0, y: 60.0),
+        (x: 60.0, y: 0.0),
+        (x: 0.0, y: 0.0),],
+    interiors:[]
+    );
+let svg_string = String::from(r#"<polygon points="0, 0 60, 0 60, 60 0, 60 0, 0"/>"#);
+
+let parsed_svg = svg_to_geometry(&svg_string);
+assert!(parsed_svg.is_ok());
+let parsed_poly = parsed_svg.ok().unwrap().into_polygon();
+assert!(parsed_poly.is_some());
+assert_eq!(poly, parsed_poly.unwrap());
+```
+
+### svg_to_geometry_collection(svg: &str)
+
+  **Note** this function does not parse a full SVG string (e.g., `<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L10 0L10 10L0 10Z"/></svg>`), it only parses the individual shape elements (e.g., `<path d="M0 0L10 0L10 10L0 10Z"/>`).  The following SVG elements are supported and produce the specified Geometry types:
+
 * \<path\> &rarr; GeometryCollection
 * \<polygon\> &rarr; GeometryCollection with a single Polygon
 * \<polyline\> &rarr; GeometryCollection with a single LineString
@@ -20,7 +83,7 @@ This package provides a functions to read a string containing an SVG element or 
 
 ```rust
 use geo_types::{ Polygon, polygon };
-use geo_svg_io::geo_svg_reader::svg_to_geometry;
+use geo_svg_io::geo_svg_reader::svg_to_geometry_collection;
 
 let poly: Polygon<f64> = polygon!(
         exterior: [
@@ -41,8 +104,8 @@ let poly: Polygon<f64> = polygon!(
 let svg_string =
             String::from(r#"<path d="M0 0L0 60L60 60L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10"/>"#);
 
-let parsed_svg = svg_to_geometry(&svg_string);
-assert_eq!(parsed_svg.is_ok(), true);
+let parsed_svg = svg_to_geometry_collection(&svg_string);
+assert!(parsed_svg.is_ok());
 
 // Unwrap the GeometryCollection result
 let geom = parsed_svg.ok().unwrap();
@@ -58,7 +121,7 @@ assert_eq!(poly, pl.unwrap());
 use geo_types::{ Polygon, polygon };
 use geo_svg_io::geo_svg_reader::svg_to_geometry;
 
-et poly: Polygon<f64> = polygon!(
+let poly: Polygon<f64> = polygon!(
         exterior: [
             (x: 0.0_f64, y: 0.0),
             (x: 0.0, y: 60.0),
@@ -71,8 +134,8 @@ et poly: Polygon<f64> = polygon!(
 
 let svg_string = String::from(r#"<polygon points="0, 0 60, 0 60, 60 0, 60 0, 0"/>"#);
 
-let parsed_svg = svg_to_geometry(&svg_string);
-assert_eq!(parsed_svg.is_ok(), true);
+let parsed_svg = svg_to_geometry_collection(&svg_string);
+assert!(parsed_svg.is_ok());
 
 // Unwrap the GeometryCollection result
 let geom = parsed_svg.ok().unwrap();
@@ -90,7 +153,7 @@ A `<path>` element `d` string can be parsed directly into a Geometry by the `svg
 #### Examples
 
 ```rust
-use geo_svg_io::geo_svg_reader::svg_d_path_to_geometry;
+use geo_svg_io::geo_svg_reader::svg_d_path_to_geometry_collection;
 use geo_types::polygon;
 
 let poly = polygon!(
@@ -111,7 +174,40 @@ let poly = polygon!(
 
 let svg_string = String::from("M0 0l0 60l60 0L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10");
 let parsed_svg = svg_d_path_to_geometry(&svg_string);
-assert_eq!(parsed_svg.is_ok(), true);
+assert!(parsed_svg.is_ok());
+let pl = parsed_svg.ok().unwrap().into_polygon();
+assert!(pl.is_some());
+assert_eq!(pl.unwrap(), poly);
+```
+
+### svg_d_path_to_geometry_collection(svg: &str)
+A `<path>` element `d` string can be parsed directly into a GeometryCollection by the `svg_d_path_to_geometry_collection(svg: &str)` function.  The output will always be a GeometryCollection.
+
+#### Examples
+
+```rust
+use geo_svg_io::geo_svg_reader::svg_d_path_to_geometry_collection;
+use geo_types::polygon;
+
+let poly = polygon!(
+        exterior: [
+            (x: 0.0, y: 0.0),
+            (x: 0.0, y: 60.0),
+            (x: 60.0, y: 60.0),
+            (x: 60.0, y: 0.0),
+            (x: 0.0, y: 0.0),],
+        interiors:[[
+            (x: 10.0, y: 10.0),
+            (x: 40.0, y: 1.0),
+            (x: 40.0, y: 40.0),
+            (x: 10.50, y: 40.0),
+            (x: 10.0, y: 10.0),]
+            ]
+        );
+
+let svg_string = String::from("M0 0l0 60l60 0L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10");
+let parsed_svg = svg_d_path_to_geometry_collection(&svg_string);
+assert!(parsed_svg.is_ok());
 
 // Unwrap the GeometryCollection result
 let geom = parsed_svg.ok().unwrap();

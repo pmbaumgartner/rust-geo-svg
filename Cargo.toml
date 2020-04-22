@@ -1,7 +1,7 @@
 [package]
 name = "geo-svg-io"
 description = "Functionality to convert between SVG and geo-types"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Bronson Brown-deVost <bronsonbdevost@aim.com>"]
 edition = "2018"
 license = "MIT"

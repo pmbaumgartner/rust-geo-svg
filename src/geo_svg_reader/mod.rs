@@ -17,6 +17,7 @@ use xml::reader::{EventReader, XmlEvent};
 pub enum SvgError {
     ParseError(std::num::ParseFloatError),
     SvgInvalidType(SvgUnsupportedGeometryTypeError),
+    SvgGeomCollectionForGeometry(SvgGeometryCollectionForGeometryError),
     InvalidSvgError(InvalidSvgError),
 }
 
@@ -32,6 +33,15 @@ pub struct SvgUnsupportedGeometryTypeError;
 impl fmt::Display for SvgUnsupportedGeometryTypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "The SVG could not be parsed to a valid Geometry type") // user-facing output
+    }
+}
+
+pub struct SvgGeometryCollectionForGeometryError;
+
+// Implement std::fmt::Display for AppError
+impl fmt::Display for SvgGeometryCollectionForGeometryError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "The SVG could only be parsed as a GEOMETRYCOLLECTION") // user-facing output
     }
 }
 
@@ -77,7 +87,7 @@ impl fmt::Debug for InvalidSvgError {
 ///
 /// ```rust
 /// use geo_types::{ Polygon, polygon };
-/// use geo_svg_io::geo_svg_reader::svg_to_geometry;
+/// use geo_svg_io::geo_svg_reader::svg_to_geometry_collection;
 ///
 /// let poly: Polygon<f64> = polygon!(
 ///         exterior: [
@@ -98,7 +108,7 @@ impl fmt::Debug for InvalidSvgError {
 /// let svg_string =
 ///             String::from(r#"<path d="M0 0L0 60L60 60L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10"/>"#);
 ///
-/// let parsed_svg = svg_to_geometry(&svg_string);
+/// let parsed_svg = svg_to_geometry_collection(&svg_string);
 /// assert_eq!(parsed_svg.is_ok(), true);
 ///
 /// // Unwrap the GeometryCollection result
@@ -115,7 +125,7 @@ impl fmt::Debug for InvalidSvgError {
 ///
 /// ```rust
 /// use geo_types::{ Polygon, polygon };
-/// use geo_svg_io::geo_svg_reader::svg_to_geometry;
+/// use geo_svg_io::geo_svg_reader::svg_to_geometry_collection;
 ///
 /// let poly: Polygon<f64> = polygon!(
 ///         exterior: [
@@ -130,7 +140,7 @@ impl fmt::Debug for InvalidSvgError {
 ///
 /// let svg_string = String::from(r#"<polygon points="0, 0 60, 0 60, 60 0, 60 0, 0"/>"#);
 ///
-/// let parsed_svg = svg_to_geometry(&svg_string);
+/// let parsed_svg = svg_to_geometry_collection(&svg_string);
 /// assert_eq!(parsed_svg.is_ok(), true);
 ///
 /// // Unwrap the GeometryCollection result
@@ -143,7 +153,7 @@ impl fmt::Debug for InvalidSvgError {
 /// assert_eq!(poly, pl.unwrap());
 /// ```
 ///
-pub fn svg_to_geometry(svg: &str) -> Result<GeometryCollection<f64>, SvgError> {
+pub fn svg_to_geometry_collection(svg: &str) -> Result<GeometryCollection<f64>, SvgError> {
     let parser = EventReader::new(svg.as_bytes());
     for e in parser {
         if let Ok(XmlEvent::StartElement {
@@ -154,7 +164,7 @@ pub fn svg_to_geometry(svg: &str) -> Result<GeometryCollection<f64>, SvgError> {
             if name.local_name == "path" {
                 for attr in attributes {
                     if attr.name.local_name == "d" {
-                        let res = svg_d_path_to_geometry(&attr.value)?;
+                        let res = svg_d_path_to_geometry_collection(&attr.value)?;
                         return Ok(res);
                     }
                 }
@@ -267,6 +277,86 @@ pub fn svg_to_geometry(svg: &str) -> Result<GeometryCollection<f64>, SvgError> {
     Err(SvgError::SvgInvalidType(SvgUnsupportedGeometryTypeError))
 }
 
+/// Returns a Geometry parsed from the submitted SVG element
+///
+/// **Note** this function does not parse a full SVG string (e.g., `<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L10 0L10 10L0 10Z"/></svg>`), it only parses the individual shape elements (e.g., `<path d="M0 0L10 0L10 10L0 10Z"/>`).  The following SVG elements are supported and produce the specified Geometry types:
+///
+/// * \<path\> &rarr; Geometry with the autodetected Geometry type
+/// * \<polygon\> &rarr; Polygon
+/// * \<polyline\> &rarr; LineString
+/// * \<rect\> &rarr; Polygon
+/// * \<line\> &rarr; Line
+///
+/// **Note** also that the current parsing of curves in a `<path>`is rather simple right now,
+/// it just finds 100 points along the curve.
+///
+/// # Examples
+///
+/// Parsing a `<path>` element:
+///
+/// ```rust
+/// use geo_types::{ Polygon, polygon };
+/// use geo_svg_io::geo_svg_reader::svg_to_geometry;
+///
+/// let poly: Polygon<f64> = polygon!(
+///     exterior: [
+///         (x: 0.0_f64, y: 0.0),
+///         (x: 0.0, y: 60.0),
+///         (x: 60.0, y: 60.0),
+///         (x: 60.0, y: 0.0),
+///         (x: 0.0, y: 0.0),],
+///     interiors:[[
+///         (x: 10.0, y: 10.0),
+///         (x: 40.0, y: 1.0),
+///         (x: 40.0, y: 40.0),
+///         (x: 10.50, y: 40.0),
+///         (x: 10.0, y: 10.0),]
+///         ]
+///     );
+/// let svg_string =
+///     String::from(r#"<path d="M0 0L0 60L60 60L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10"/>"#);
+///
+/// let parsed_svg = svg_to_geometry(&svg_string);
+/// assert!(parsed_svg.is_ok());
+/// let parsed_poly = parsed_svg.ok().unwrap().into_polygon();
+/// assert!(parsed_poly.is_some());
+/// assert_eq!(poly, parsed_poly.unwrap());
+/// ```
+///
+/// Parsing a `<polygon>` element:
+///
+/// ```rust
+/// use geo_types::{ Polygon, polygon };
+/// use geo_svg_io::geo_svg_reader::svg_to_geometry;
+///
+/// let poly: Polygon<f64> = polygon!(
+///     exterior: [
+///         (x: 0.0_f64, y: 0.0),
+///         (x: 0.0, y: 60.0),
+///         (x: 60.0, y: 60.0),
+///         (x: 60.0, y: 0.0),
+///         (x: 0.0, y: 0.0),],
+///     interiors:[]
+///     );
+/// let svg_string = String::from(r#"<polygon points="0, 0 60, 0 60, 60 0, 60 0, 0"/>"#);
+///
+/// let parsed_svg = svg_to_geometry(&svg_string);
+/// assert!(parsed_svg.is_ok());
+/// let parsed_poly = parsed_svg.ok().unwrap().into_polygon();
+/// assert!(parsed_poly.is_some());
+/// assert_eq!(poly, parsed_poly.unwrap());
+/// ```
+///
+pub fn svg_to_geometry(svg: &str) -> Result<Geometry<f64>, SvgError> {
+    let gc = svg_to_geometry_collection(svg)?;
+    if gc.0.len() == 1 {
+        return Ok(gc.0[0].clone());
+    }
+    Err(SvgError::SvgGeomCollectionForGeometry(
+        SvgGeometryCollectionForGeometryError,
+    ))
+}
+
 fn svg_polygon_to_geometry(point_string: &str) -> Result<Polygon<f64>, SvgError> {
     let points = PointsParser::from(point_string);
     let polygon = Polygon::new(
@@ -337,7 +427,7 @@ fn svg_line_to_geometry(start_x: &f64, start_y: &f64, end_x: &f64, end_y: &f64) 
 /// # Examples
 ///
 /// ```rust
-/// use geo_svg_io::geo_svg_reader::svg_d_path_to_geometry;
+/// use geo_svg_io::geo_svg_reader::svg_d_path_to_geometry_collection;
 /// use geo_types::polygon;
 ///
 /// let poly = polygon!(
@@ -357,7 +447,7 @@ fn svg_line_to_geometry(start_x: &f64, start_y: &f64, end_x: &f64, end_y: &f64) 
 ///         );
 ///
 /// let svg_string = String::from("M0 0l0 60l60 0L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10");
-/// let parsed_svg = svg_d_path_to_geometry(&svg_string);
+/// let parsed_svg = svg_d_path_to_geometry_collection(&svg_string);
 /// assert_eq!(parsed_svg.is_ok(), true);
 ///
 /// // Unwrap the GeometryCollection result
@@ -370,7 +460,7 @@ fn svg_line_to_geometry(start_x: &f64, start_y: &f64, end_x: &f64, end_y: &f64) 
 /// assert_eq!(pl.unwrap(), poly);
 /// ```
 ///
-pub fn svg_d_path_to_geometry(svg: &str) -> Result<GeometryCollection<f64>, SvgError> {
+pub fn svg_d_path_to_geometry_collection(svg: &str) -> Result<GeometryCollection<f64>, SvgError> {
     // We will collect the separate paths (from M to M) into segments for parsing
     let mut path_segments = vec![] as Vec<Vec<Coordinate<f64>>>;
     let mut segment_count = 0;
@@ -578,6 +668,51 @@ pub fn svg_d_path_to_geometry(svg: &str) -> Result<GeometryCollection<f64>, SvgE
     Ok(parse_path_segments_to_geom(&path_segments))
 }
 
+/// Parses the `d`-string from an SVG `<path>` element into a single Geometry
+///
+/// **Note** that the current parsing of curves is rather simple right now, it just finds
+/// 100 points along the curve.
+///
+/// # Examples
+///
+/// ```rust
+/// use geo_svg_io::geo_svg_reader::svg_d_path_to_geometry;
+/// use geo_types::polygon;
+///
+/// let poly = polygon!(
+///         exterior: [
+///             (x: 0.0, y: 0.0),
+///             (x: 0.0, y: 60.0),
+///             (x: 60.0, y: 60.0),
+///             (x: 60.0, y: 0.0),
+///             (x: 0.0, y: 0.0),],
+///         interiors:[[
+///             (x: 10.0, y: 10.0),
+///             (x: 40.0, y: 1.0),
+///             (x: 40.0, y: 40.0),
+///             (x: 10.50, y: 40.0),
+///             (x: 10.0, y: 10.0),]
+///             ]
+///         );
+///
+/// let svg_string = String::from("M0 0l0 60l60 0L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10");
+/// let parsed_svg = svg_d_path_to_geometry(&svg_string);
+/// assert!(parsed_svg.is_ok());
+/// let pl = parsed_svg.ok().unwrap().into_polygon();
+/// assert!(pl.is_some());
+/// assert_eq!(pl.unwrap(), poly);
+/// ```
+///
+pub fn svg_d_path_to_geometry(svg: &str) -> Result<Geometry<f64>, SvgError> {
+    let gc = svg_d_path_to_geometry_collection(svg)?;
+    if gc.0.len() == 1 {
+        return Ok(gc.0[0].clone());
+    }
+    Err(SvgError::SvgGeomCollectionForGeometry(
+        SvgGeometryCollectionForGeometryError,
+    ))
+}
+
 fn calculate_svg_coord2(x: f64, y: f64, last: Coordinate<f64>, abs: bool) -> Coord2 {
     Coord2(
         if abs { x } else { last.x + x },
@@ -723,7 +858,7 @@ mod tests {
             ]
         );
         let svg_string = String::from("M0 0l0 60l60 0L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10");
-        let parsed_svg = svg_d_path_to_geometry(&svg_string);
+        let parsed_svg = svg_d_path_to_geometry_collection(&svg_string);
         assert_eq!(parsed_svg.is_ok(), true);
         let geom = parsed_svg.ok().unwrap();
         assert_eq!(1, geom.0.len());
@@ -752,7 +887,7 @@ mod tests {
         .into();
         let svg_string =
             String::from(r#"<path d="M0 0L0 60L60 60L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10"/>"#);
-        let parsed_svg = svg_to_geometry(&svg_string);
+        let parsed_svg = svg_to_geometry_collection(&svg_string);
         assert_eq!(parsed_svg.is_ok(), true);
         let geom = parsed_svg.ok().unwrap();
         assert_eq!(1, geom.0.len());
@@ -781,7 +916,7 @@ mod tests {
         .into();
         let svg_string =
             String::from(r#"<path d="M0 0v60h60v-60h-60M10 10L40 1L40 40L10.5 40L10 10"/>"#);
-        let parsed_svg = svg_to_geometry(&svg_string);
+        let parsed_svg = svg_to_geometry_collection(&svg_string);
         assert_eq!(parsed_svg.is_ok(), true);
         let geom = parsed_svg.ok().unwrap();
         assert_eq!(1, geom.0.len());
@@ -798,7 +933,7 @@ mod tests {
         let svg_string = String::from(
             r#"<path d="M0 0C0 30 30 40 40 40S50 60 60 60L60 0ZM10 10L20 10L20 20L10 20L10 10" />"#,
         );
-        let parsed_svg = svg_to_geometry(&svg_string);
+        let parsed_svg = svg_to_geometry_collection(&svg_string);
         assert_eq!(true, parsed_svg.is_ok());
         let svg = parsed_svg.ok().unwrap().to_svg();
         assert_eq!(solution, svg);
@@ -813,7 +948,7 @@ mod tests {
         let svg_string = String::from(
             r#"<path d="M0 0Q30 40 40 40T60 60L60 0ZM10 10L20 10L20 20L10 20L10 10" />"#,
         );
-        let parsed_svg = svg_to_geometry(&svg_string);
+        let parsed_svg = svg_to_geometry_collection(&svg_string);
         assert_eq!(true, parsed_svg.is_ok());
         let svg = parsed_svg.ok().unwrap().to_svg();
         assert_eq!(solution, svg);
@@ -832,7 +967,7 @@ mod tests {
         )
         .into();
         let svg_string = String::from(r#"<polygon points="0, 0 60, 0 60, 60 0, 60 0, 0"/>"#);
-        let parsed_svg = svg_to_geometry(&svg_string);
+        let parsed_svg = svg_to_geometry_collection(&svg_string);
         assert_eq!(parsed_svg.is_ok(), true);
         let geom = parsed_svg.ok().unwrap();
         assert_eq!(1, geom.0.len());
@@ -850,7 +985,7 @@ mod tests {
             (x: 60.0, y: 0.0),]
         .into();
         let svg_string = String::from(r#"<polyline points="0, 0 0, 60 60, 60 60, 0"/>"#);
-        let parsed_svg = svg_to_geometry(&svg_string);
+        let parsed_svg = svg_to_geometry_collection(&svg_string);
         assert_eq!(parsed_svg.is_ok(), true);
         let geom = parsed_svg.ok().unwrap();
         assert_eq!(1, geom.0.len());
@@ -872,12 +1007,59 @@ mod tests {
         )
         .into();
         let svg_string = String::from(r#"<rect x="0" y="0" width="60" height="60"/>"#);
-        let parsed_svg = svg_to_geometry(&svg_string);
+        let parsed_svg = svg_to_geometry_collection(&svg_string);
         assert_eq!(parsed_svg.is_ok(), true);
         let geom = parsed_svg.ok().unwrap();
         assert_eq!(1, geom.0.len());
         let pl = geom.0[0].clone().into_polygon();
         assert_eq!(true, pl.is_some());
         assert_eq!(poly, pl.unwrap());
+    }
+
+    #[test]
+    fn can_convert_svg_path_to_single_geom() {
+        let poly: Polygon<f64> = polygon!(
+            exterior: [
+                (x: 0.0_f64, y: 0.0),
+                (x: 0.0, y: 60.0),
+                (x: 60.0, y: 60.0),
+                (x: 60.0, y: 0.0),
+                (x: 0.0, y: 0.0),],
+            interiors:[[
+                (x: 10.0, y: 10.0),
+                (x: 40.0, y: 1.0),
+                (x: 40.0, y: 40.0),
+                (x: 10.50, y: 40.0),
+                (x: 10.0, y: 10.0),]
+                ]
+            );
+        let svg_string =
+            String::from(r#"<path d="M0 0L0 60L60 60L60 0L0 0M10 10L40 1L40 40L10.5 40L10 10"/>"#);
+
+        let parsed_svg = svg_to_geometry(&svg_string);
+        assert!(parsed_svg.is_ok());
+        let parsed_poly = parsed_svg.ok().unwrap().into_polygon();
+        assert!(parsed_poly.is_some());
+        assert_eq!(poly, parsed_poly.unwrap());
+    }
+
+    #[test]
+    fn can_convert_svg_polygon_to_single_geom() {
+        let poly: Polygon<f64> = polygon!(
+            exterior: [
+                (x: 0.0_f64, y: 0.0),
+                (x: 0.0, y: 60.0),
+                (x: 60.0, y: 60.0),
+                (x: 60.0, y: 0.0),
+                (x: 0.0, y: 0.0),],
+            interiors:[]
+            );
+        let svg_string = String::from(r#"<polygon points="0, 0 60, 0 60, 60 0, 60 0, 0"/>"#);
+
+        let parsed_svg = svg_to_geometry(&svg_string);
+        assert!(parsed_svg.is_ok());
+        let parsed_poly = parsed_svg.ok().unwrap().into_polygon();
+        assert!(parsed_poly.is_some());
+        assert_eq!(poly, parsed_poly.unwrap());
     }
 }
