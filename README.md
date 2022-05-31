@@ -2,6 +2,8 @@
 
 Functionality to convert between SVG and geo-types.
 
+This is a fork of the original crate, updated for newer versions of `geo` and `geo_types`.
+
 ## SVG to Geometry
 
 This package provides a functions to read a string containing an SVG element or `d` string and parse it to a geometry.

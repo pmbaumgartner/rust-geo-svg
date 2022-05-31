@@ -1,10 +1,9 @@
+extern crate geo_booleanop;
 extern crate geo_normalized;
 extern crate geo_types;
 
 use flo_curves::bezier::{de_casteljau3, de_casteljau4};
 use flo_curves::{Coord2, Coordinate2D};
-use geo_booleanop::boolean::BooleanOp;
-use geo_normalized::Normalized;
 use geo_types::{
     Coordinate, Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPolygon,
     Polygon, Rect,
@@ -371,7 +370,7 @@ fn svg_polygon_to_geometry(point_string: &str) -> Result<Polygon<f64>, SvgError>
     if polygon.exterior().num_coords() == 0 {
         return Err(SvgError::InvalidSvgError(InvalidSvgError));
     }
-    Ok(polygon.normalized())
+    Ok(polygon)
 }
 
 fn svg_polyline_to_geometry(point_string: &str) -> Result<LineString<f64>, SvgError> {
@@ -402,8 +401,7 @@ fn svg_rect_to_geometry(x: f64, y: f64, width: f64, height: f64) -> Result<Polyg
     Ok(Polygon::from(Rect::new(
         Coordinate::<f64> { x, y },
         Coordinate::<f64> { x: max_x, y: max_y },
-    ))
-    .normalized())
+    )))
 }
 
 fn svg_line_to_geometry(start_x: &f64, start_y: &f64, end_x: &f64, end_y: &f64) -> Line<f64> {
@@ -796,11 +794,8 @@ fn parse_polygon_rings_to_geom(rings: &Vec<LineString<f64>>) -> MultiPolygon<f64
         ring_iter.next().unwrap().clone(),
         vec![],
     )]);
-    for ring in ring_iter {
-        let poly = Polygon::new(ring.clone(), vec![]);
-        result_poly = result_poly.xor(&poly);
-    }
-    result_poly.0.iter().map(|x| x.normalized()).collect()
+
+    result_poly
 }
 
 fn map_lines_to_geometry(lines: &Vec<Line<f64>>) -> Geometry<f64> {

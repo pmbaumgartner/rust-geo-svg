@@ -1,8 +1,8 @@
 extern crate geo_types;
 
 use geo_types::{
-    Coordinate, Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPolygon,
-    Polygon, Rect, Triangle,
+    CoordNum, Coordinate, Geometry, GeometryCollection, Line, LineString, MultiLineString,
+    MultiPolygon, Polygon, Rect, Triangle,
 };
 use std::fmt;
 
@@ -111,7 +111,7 @@ pub trait ToSvgString {
 
 /** Geometries */
 
-impl<T: num_traits::Float + fmt::Display> ToSvg for GeometryCollection<T> {
+impl<T: CoordNum + fmt::Display> ToSvg for GeometryCollection<T> {
     fn to_svg(&self) -> String {
         if self.is_empty() {
             "".into()
@@ -125,7 +125,7 @@ impl<T: num_traits::Float + fmt::Display> ToSvg for GeometryCollection<T> {
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvgString for GeometryCollection<T> {
+impl<T: CoordNum + fmt::Display> ToSvgString for GeometryCollection<T> {
     fn to_svg_string(&self) -> String {
         if self.is_empty() {
             "".into()
@@ -139,7 +139,7 @@ impl<T: num_traits::Float + fmt::Display> ToSvgString for GeometryCollection<T> 
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvg for Geometry<T> {
+impl<T: CoordNum + fmt::Display> ToSvg for Geometry<T> {
     fn to_svg(&self) -> String {
         match self {
             Geometry::MultiPolygon { .. } => self.clone().into_multi_polygon().unwrap().to_svg(),
@@ -153,7 +153,7 @@ impl<T: num_traits::Float + fmt::Display> ToSvg for Geometry<T> {
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvgString for Geometry<T> {
+impl<T: CoordNum + fmt::Display> ToSvgString for Geometry<T> {
     fn to_svg_string(&self) -> String {
         match self {
             Geometry::MultiPolygon { .. } => {
@@ -174,19 +174,19 @@ impl<T: num_traits::Float + fmt::Display> ToSvgString for Geometry<T> {
 
 /** Polygons */
 
-impl<T: num_traits::Float + fmt::Display> ToSvg for MultiPolygon<T> {
+impl<T: CoordNum + fmt::Display> ToSvg for MultiPolygon<T> {
     fn to_svg(&self) -> String {
         multi_polygon_to_svg(self)
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvgString for MultiPolygon<T> {
+impl<T: CoordNum + fmt::Display> ToSvgString for MultiPolygon<T> {
     fn to_svg_string(&self) -> String {
         multi_polygon_to_svg_string(self)
     }
 }
 
-fn multi_polygon_to_svg<T: num_traits::Float + fmt::Display>(poly: &MultiPolygon<T>) -> String {
+fn multi_polygon_to_svg<T: CoordNum + fmt::Display>(poly: &MultiPolygon<T>) -> String {
     if poly.0.is_empty() {
         "".into()
     } else {
@@ -198,9 +198,7 @@ fn multi_polygon_to_svg<T: num_traits::Float + fmt::Display>(poly: &MultiPolygon
     }
 }
 
-fn multi_polygon_to_svg_string<T: num_traits::Float + fmt::Display>(
-    poly: &MultiPolygon<T>,
-) -> String {
+fn multi_polygon_to_svg_string<T: CoordNum + fmt::Display>(poly: &MultiPolygon<T>) -> String {
     if poly.0.is_empty() {
         "".into()
     } else {
@@ -212,19 +210,19 @@ fn multi_polygon_to_svg_string<T: num_traits::Float + fmt::Display>(
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvg for Polygon<T> {
+impl<T: CoordNum + fmt::Display> ToSvg for Polygon<T> {
     fn to_svg(&self) -> String {
         polygon_to_svg(self)
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvgString for Polygon<T> {
+impl<T: CoordNum + fmt::Display> ToSvgString for Polygon<T> {
     fn to_svg_string(&self) -> String {
         polygon_to_svg_string(self)
     }
 }
 
-fn polygon_to_svg<T: num_traits::Float + fmt::Display>(poly: &Polygon<T>) -> String {
+fn polygon_to_svg<T: CoordNum + fmt::Display>(poly: &Polygon<T>) -> String {
     if poly.exterior().0.is_empty() {
         "".into()
     } else {
@@ -232,7 +230,7 @@ fn polygon_to_svg<T: num_traits::Float + fmt::Display>(poly: &Polygon<T>) -> Str
     }
 }
 
-fn polygon_to_svg_string<T: num_traits::Float + fmt::Display>(poly: &Polygon<T>) -> String {
+fn polygon_to_svg_string<T: CoordNum + fmt::Display>(poly: &Polygon<T>) -> String {
     if poly.exterior().0.is_empty() {
         "".into()
     } else {
@@ -240,7 +238,7 @@ fn polygon_to_svg_string<T: num_traits::Float + fmt::Display>(poly: &Polygon<T>)
     }
 }
 
-fn polygon_rings_to_svg<T: num_traits::Float + fmt::Display>(poly: &Polygon<T>) -> String {
+fn polygon_rings_to_svg<T: CoordNum + fmt::Display>(poly: &Polygon<T>) -> String {
     let mut lines: Vec<LineString<T>> = poly.interiors().into();
     let exterior: &LineString<T> = poly.exterior();
     lines.insert(0, exterior.clone());
@@ -252,7 +250,7 @@ fn polygon_rings_to_svg<T: num_traits::Float + fmt::Display>(poly: &Polygon<T>) 
         .join("M")
 }
 
-fn poly_ring_to_svg<T: num_traits::Float + fmt::Display>(line: &LineString<T>) -> String {
+fn poly_ring_to_svg<T: CoordNum + fmt::Display>(line: &LineString<T>) -> String {
     line.0
         .iter()
         .map(|c| coord_to_svg(&c))
@@ -262,64 +260,64 @@ fn poly_ring_to_svg<T: num_traits::Float + fmt::Display>(line: &LineString<T>) -
 
 /** Rect */
 
-impl<T: num_traits::Float + fmt::Display> ToSvg for Rect<T> {
+impl<T: CoordNum + fmt::Display> ToSvg for Rect<T> {
     fn to_svg(&self) -> String {
         rect_to_svg(self)
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvgString for Rect<T> {
+impl<T: CoordNum + fmt::Display> ToSvgString for Rect<T> {
     fn to_svg_string(&self) -> String {
         rect_to_svg_string(self)
     }
 }
 
-fn rect_to_svg<T: num_traits::Float + fmt::Display>(rect: &Rect<T>) -> String {
+fn rect_to_svg<T: CoordNum + fmt::Display>(rect: &Rect<T>) -> String {
     format!(
         "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"/>",
-        rect.min.x,
-        rect.min.y,
+        rect.min().x,
+        rect.min().y,
         rect.width(),
         rect.height()
     )
 }
 
-fn rect_to_svg_string<T: num_traits::Float + fmt::Display>(rect: &Rect<T>) -> String {
+fn rect_to_svg_string<T: CoordNum + fmt::Display>(rect: &Rect<T>) -> String {
     format!(
         "M{} {}L{} {}L{} {}L{} {}Z",
-        rect.min.x,
-        rect.min.y,
-        rect.min.x,
-        rect.min.y + rect.height(),
-        rect.min.x + rect.width(),
-        rect.min.y + rect.height(),
-        rect.min.x + rect.width(),
-        rect.min.y,
+        rect.min().x,
+        rect.min().y,
+        rect.min().x,
+        rect.min().y + rect.height(),
+        rect.min().x + rect.width(),
+        rect.min().y + rect.height(),
+        rect.min().x + rect.width(),
+        rect.min().y,
     )
 }
 
 /** Triangle */
 
-impl<T: num_traits::Float + fmt::Display> ToSvg for Triangle<T> {
+impl<T: CoordNum + fmt::Display> ToSvg for Triangle<T> {
     fn to_svg(&self) -> String {
         triangle_to_svg(self)
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvgString for Triangle<T> {
+impl<T: CoordNum + fmt::Display> ToSvgString for Triangle<T> {
     fn to_svg_string(&self) -> String {
         triangle_to_svg_string(self)
     }
 }
 
-fn triangle_to_svg<T: num_traits::Float + fmt::Display>(triangle: &Triangle<T>) -> String {
+fn triangle_to_svg<T: CoordNum + fmt::Display>(triangle: &Triangle<T>) -> String {
     format!(
         "<polygon points=\"{},{} {},{} {},{}\"/>",
         triangle.0.x, triangle.0.y, triangle.1.x, triangle.1.y, triangle.2.x, triangle.2.y
     )
 }
 
-fn triangle_to_svg_string<T: num_traits::Float + fmt::Display>(triangle: &Triangle<T>) -> String {
+fn triangle_to_svg_string<T: CoordNum + fmt::Display>(triangle: &Triangle<T>) -> String {
     format!(
         "M{} {}L{} {}L{} {}Z",
         triangle.0.x, triangle.0.y, triangle.1.x, triangle.1.y, triangle.2.x, triangle.2.y
@@ -328,21 +326,19 @@ fn triangle_to_svg_string<T: num_traits::Float + fmt::Display>(triangle: &Triang
 
 /** Lines */
 
-impl<T: num_traits::Float + fmt::Display> ToSvg for MultiLineString<T> {
+impl<T: CoordNum + fmt::Display> ToSvg for MultiLineString<T> {
     fn to_svg(&self) -> String {
         multi_linestring_to_svg(self)
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvgString for MultiLineString<T> {
+impl<T: CoordNum + fmt::Display> ToSvgString for MultiLineString<T> {
     fn to_svg_string(&self) -> String {
         multi_linestring_to_svg_string(self)
     }
 }
 
-fn multi_linestring_to_svg<T: num_traits::Float + fmt::Display>(
-    multi_line: &MultiLineString<T>,
-) -> String {
+fn multi_linestring_to_svg<T: CoordNum + fmt::Display>(multi_line: &MultiLineString<T>) -> String {
     if multi_line.0.is_empty() {
         "".into()
     } else {
@@ -355,7 +351,7 @@ fn multi_linestring_to_svg<T: num_traits::Float + fmt::Display>(
     }
 }
 
-fn multi_linestring_to_svg_string<T: num_traits::Float + fmt::Display>(
+fn multi_linestring_to_svg_string<T: CoordNum + fmt::Display>(
     multi_line: &MultiLineString<T>,
 ) -> String {
     if multi_line.0.is_empty() {
@@ -370,19 +366,19 @@ fn multi_linestring_to_svg_string<T: num_traits::Float + fmt::Display>(
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvg for LineString<T> {
+impl<T: CoordNum + fmt::Display> ToSvg for LineString<T> {
     fn to_svg(&self) -> String {
         linestring_to_svg(self)
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvgString for LineString<T> {
+impl<T: CoordNum + fmt::Display> ToSvgString for LineString<T> {
     fn to_svg_string(&self) -> String {
         linestring_to_svg_string(self)
     }
 }
 
-fn linestring_to_svg<T: num_traits::Float + fmt::Display>(line: &LineString<T>) -> String {
+fn linestring_to_svg<T: CoordNum + fmt::Display>(line: &LineString<T>) -> String {
     if line.0.is_empty() {
         "".into()
     } else {
@@ -390,7 +386,7 @@ fn linestring_to_svg<T: num_traits::Float + fmt::Display>(line: &LineString<T>) 
     }
 }
 
-fn linestring_to_svg_string<T: num_traits::Float + fmt::Display>(line: &LineString<T>) -> String {
+fn linestring_to_svg_string<T: CoordNum + fmt::Display>(line: &LineString<T>) -> String {
     if line.0.is_empty() {
         "".into()
     } else {
@@ -398,7 +394,7 @@ fn linestring_to_svg_string<T: num_traits::Float + fmt::Display>(line: &LineStri
     }
 }
 
-fn line_to_svg<T: num_traits::Float + fmt::Display>(line: &LineString<T>) -> String {
+fn line_to_svg<T: CoordNum + fmt::Display>(line: &LineString<T>) -> String {
     line.0
         .iter()
         .map(|c| coord_to_svg_point(&c))
@@ -406,7 +402,7 @@ fn line_to_svg<T: num_traits::Float + fmt::Display>(line: &LineString<T>) -> Str
         .join(" ")
 }
 
-fn line_to_svg_string<T: num_traits::Float + fmt::Display>(line: &LineString<T>) -> String {
+fn line_to_svg_string<T: CoordNum + fmt::Display>(line: &LineString<T>) -> String {
     line.0
         .iter()
         .map(|c| coord_to_svg(&c))
@@ -416,26 +412,26 @@ fn line_to_svg_string<T: num_traits::Float + fmt::Display>(line: &LineString<T>)
 
 /** Line */
 
-impl<T: num_traits::Float + fmt::Display> ToSvg for Line<T> {
+impl<T: CoordNum + fmt::Display> ToSvg for Line<T> {
     fn to_svg(&self) -> String {
         single_line_to_svg(self)
     }
 }
 
-impl<T: num_traits::Float + fmt::Display> ToSvgString for Line<T> {
+impl<T: CoordNum + fmt::Display> ToSvgString for Line<T> {
     fn to_svg_string(&self) -> String {
         single_line_to_svg_string(self)
     }
 }
 
-fn single_line_to_svg<T: num_traits::Float + fmt::Display>(line: &Line<T>) -> String {
+fn single_line_to_svg<T: CoordNum + fmt::Display>(line: &Line<T>) -> String {
     format!(
         "<line x1=\"{}\" x2=\"{}\" y1=\"{}\" y2=\"{}\"/>",
         line.start.x, line.end.x, line.start.y, line.end.y
     )
 }
 
-fn single_line_to_svg_string<T: num_traits::Float + fmt::Display>(line: &Line<T>) -> String {
+fn single_line_to_svg_string<T: CoordNum + fmt::Display>(line: &Line<T>) -> String {
     format!(
         "M{} {}L{} {}",
         line.start.x, line.end.x, line.start.y, line.end.y
@@ -444,11 +440,11 @@ fn single_line_to_svg_string<T: num_traits::Float + fmt::Display>(line: &Line<T>
 
 /** Points */
 
-fn coord_to_svg<T: num_traits::Float + fmt::Display>(coord: &Coordinate<T>) -> String {
+fn coord_to_svg<T: CoordNum + fmt::Display>(coord: &Coordinate<T>) -> String {
     format!("{} {}", coord.x, coord.y)
 }
 
-fn coord_to_svg_point<T: num_traits::Float + fmt::Display>(coord: &Coordinate<T>) -> String {
+fn coord_to_svg_point<T: CoordNum + fmt::Display>(coord: &Coordinate<T>) -> String {
     format!("{},{}", coord.x, coord.y)
 }
 
